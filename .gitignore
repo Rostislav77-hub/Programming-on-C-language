@@ -53,3 +53,13 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# Editor settings VS Code
+.vscode/
+
+# Ignore projects on C# / .NET
+[Bb]in/
+[Oo]bj/
+*.user
+*.userprefs
+*.suo
