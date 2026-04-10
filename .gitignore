@@ -63,3 +63,6 @@ dkms.conf
 *.user
 *.userprefs
 *.suo
+
+# Ignore .vscode files first 
+.vscode/
