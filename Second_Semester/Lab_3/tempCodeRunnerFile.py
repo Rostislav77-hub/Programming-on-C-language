@@ -63,6 +63,8 @@ def draw_graph(canvas, coords, matrix, is_directed):
                 x2, y2 = coords[j]
                 
                 if i == j:
+                    canvas.create_oval(x1 - node_r - 20, y1 - node_r - 20, 
+                                       x1 - node_r + 10, y1 - node_r + 10, outline="black")
                     continue
                 
                 is_mutual = is_directed and matrix[j][i] == 1
