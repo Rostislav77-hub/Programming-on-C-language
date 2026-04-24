@@ -109,7 +109,12 @@ def main():
     root = tk.Tk()
     root.title(f"Графи (Варіант {SEED}) - n={N}, Трикутник")
     
-    canvas = tk.Canvas(root, width=800, height=800, bg="white")
+    canvas = tk.Canvas(root, width=800, height=800, bg="white", scrollregion=(0, 0, 800, 800))
+    sb_y = tk.Scrollbar(root, orient=tk.VERTICAL,   command=canvas.yview)
+    sb_x = tk.Scrollbar(root, orient=tk.HORIZONTAL, command=canvas.xview)
+    canvas.configure(yscrollcommand=sb_y.set, xscrollcommand=sb_x.set)
+    sb_y.pack(side=tk.RIGHT,  fill=tk.Y)
+    sb_x.pack(side=tk.BOTTOM, fill=tk.X)
     canvas.pack(padx=10, pady=10)
     
     coords = get_triangle_coords(N, 800, 800, 50)
