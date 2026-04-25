@@ -95,4 +95,90 @@ Deep dive into sorting algorithms applied directly within two-dimensional arrays
 ---
 *End of First Semester.*
 
+# 🚀 Second Semester (Advanced Data Structures & Graph Theory)
+
+This repository contains the advanced programming labs from the Second Semester. The curriculum demonstrates a deliberate progression: starting with low-level memory management and recursion in **C**, and transitioning to high-level graph theory algorithms and GUI development in **Python**.
+
 ---
+
+## 📌 Completed works:
+
+### 🔷 [Lab_1] Recursive Algorithms & Error Analysis (C)
+
+Exploration of recursive function execution using the call stack. The objective is to compute the Taylor series expansion for the mathematical function $\arctan(x)$ (Variant 15).
+
+🛠 **Tech Stack & Highlights:**
+* **Recursion Mechanics:** Implemented three distinct recursive paradigms: calculation strictly on the descent (tail recursion), strictly on the return, and a hybrid approach (descent/return splitting).
+* **Mathematical Precision:** Computed approximations and mapped the computational error against a dynamically generated baseline.
+* **Memory Constraints:** Strictly controlled variable scope and wrapper functions to prevent stack overflow and memory leaks during deep recursive calls.
+
+* 📁 **Structure:** `Second_Semester/Lab_1/`
+
+<br>
+
+### 🔷 [Lab_2] Dynamic Data Structures: Linked Lists (C)
+
+Advanced manipulation of dynamic memory via Linked Lists. The task (Variant 15) requires reordering a sequence of real numbers into an alternating "accordion" pattern: $a_1, a_n, a_2, a_{n-1}...$
+
+🛠 **Tech Stack & Highlights:**
+* **Pointer Arithmetic & Manipulation:** Handled node rewiring and list traversal without relying on a pre-calculated `length` variable, forcing dynamic runtime evaluation.
+* **Memory Safety:** Strictly utilized `malloc` and `free` to prevent memory leaks while rearranging the data structure entirely *in-place*.
+* **Algorithm Complexity:** Achieved the reordering logic under strict constraints, minimizing read/write operations compared to standard array manipulation.
+
+* 📁 **Structure:** `Second_Semester/Lab_2/`
+
+<br>
+
+### 🔷 [Lab_3] Graph Generation & GUI Visualization (Python)
+
+Transitioning to Python and GUI development to represent discrete mathematics visually. The lab focuses on generating Directed and Undirected graphs based on a deterministic seed and rendering them from scratch.
+
+🛠 **Tech Stack & Highlights:**
+* **Algorithmic Graph Generation:** Designed a custom adjacency matrix generator applying specific algebraic thresholds ($k$-filters) based on randomized matrices.
+* **Raw GUI Rendering:** Built a visualizer using standard GUI libraries (`tkinter`) without relying on specialized graph frameworks like `networkx`.
+* **Geometry Math:** Implemented trigonometric positioning to dynamically arrange nodes in specific geometric patterns and utilized Bezier curves to render overlapping directed edges cleanly.
+
+* 📁 **Structure:** `Second_Semester/Lab_3/`
+
+<br>
+
+### 🔷 [Lab_4] Graph Characteristics, Reachability & Condensation (Python)
+
+Deep algorithmic analysis of graph structures. The objective is to compute fundamental properties, find specific paths, and simplify complex cyclic graphs into their Condensation Graphs.
+
+🛠 **Tech Stack & Highlights:**
+* **Matrix Operations:** Utilized matrix multiplication ($A^2, A^3$) to programmatically discover all exact paths of length 2 and 3.
+* **Transitive Closure:** Implemented algorithms to calculate the reachability matrix and identify Strongly Connected Components (SCCs).
+* **Graph Condensation:** Engineered logic to collapse calculated SCCs into super-nodes and generate/visualize the resulting acyclic Condensation Graph.
+
+* 📁 **Structure:** `Second_Semester/Lab_4/`
+
+<br>
+
+### 🔷 [Lab_5] Graph Traversal Algorithms: BFS & DFS (Python)
+
+Implementation of fundamental search algorithms with interactive real-time visualization. The task involves executing Breadth-First Search (BFS) and Depth-First Search (DFS) on a generated directed graph.
+
+🛠 **Tech Stack & Highlights:**
+* **Interactive Stepping (Generators):** Utilized Python `yield` generators to decouple the traversal logic from the UI, allowing the user to step through the BFS/DFS execution frame-by-frame via button clicks.
+* **Real-time State Representation:** Dynamically updated node colors and edge highlights in the GUI to reflect vertex states (unvisited, discovered, fully explored).
+* **Spanning Tree Extraction:** Simultaneously built and rendered the traversal spanning tree (DFS/BFS tree) parallel to the original graph during execution.
+
+* 📁 **Structure:** `Second_Semester/Lab_5/`
+
+<br>
+
+### 🔷 [Lab_6] Minimum Spanning Tree: Prim's Algorithm (Python)
+
+Finding the optimal subgraph configuration using greedy algorithms. This lab focuses on generating a complex weighted undirected graph and computing its Minimum Spanning Tree (MST).
+
+🛠 **Tech Stack & Highlights:**
+* **Complex Data Transformation:** Engineered a multi-step algebraic derivation to construct a symmetric weight matrix $W$ from initial randomized boolean arrays and triangular matrices.
+* **Dynamic Adjacency Lists:** Transformed the generated matrices into dynamic linked structures (adjacency lists) for optimized algorithmic processing.
+* **Prim's Algorithm & Priority Queues:** Implemented Prim's greedy algorithm to find the MST, leveraging Python's `heapq` for highly efficient $O(E \log V)$ minimum weight edge selection.
+* **Weighted UI Rendering:** Enhanced the GUI to clearly render edge weights and visually trace the step-by-step growth of the spanning tree across the network.
+
+* 📁 **Structure:** `Second_Semester/Lab_6/`
+
+---
+*End of Second Semester. 2025-2026@*
