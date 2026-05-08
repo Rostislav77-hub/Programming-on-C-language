@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>ЛР6: Мінімальний кістяк (Алгоритм Пріма)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+        }
+        canvas {
+            background-color: white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            border-radius: 8px;
+        }
+        .controls {
+            margin-top: 20px;
+            text-align: center;
+        }
+        #info {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+            height: 24px;
+        }
+        button {
+            background-color: #FF9800;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: background-color 0.2s;
+        }
+        button:hover { background-color: #F57C00; }
+        button:disabled { background-color: #9E9E9E; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+
+    <div id="info">Натисніть кнопку, щоб почати алгоритм Пріма</div>
+    <canvas id="graphCanvas" width="800" height="700"></canvas>
+    <div class="controls">
+        <button id="stepBtn">▶ НАСТУПНИЙ КРОК АЛГОРИТМУ</button>
+    </div>
+
+<script>
+    const SEED = 5515, N = 11, K = 0.915;
+    const CW = 800, CH = 700, PAD = 70, NR = 20;
+
+    // ── Генератор випадкових чисел із Seed (PRNG) ──
+    class PRNG {
+        constructor(seed) { this.seed = seed; }
+        uniform(min, max) {
+            let t = this.seed += 0x6D2B79F5;
+            t = Math.imul(t ^ t >>> 15, t | 1);
+            t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+            const rand = ((t ^ t >>> 14) >>> 0) / 4294967296;
+            return min + rand * (max - min);
+        }
+    }
+
+    // ── Власна реалізація Min-Heap для заміни heapq ──
+    class MinHeap {
+        constructor() { this.data = []; }
+        push(item) {
+            this.data.push(item);
+            this.data.sort((a, b) => a[0] - b[0]); // Сортуємо по вазі (індекс 0)
+        }
+        pop() { return this.data.shift(); }
+        get length() { return this.data.length; }
+    }
+
+    // ── Математика та генерація матриць ──
+    function buildMatrices(seed, n, k) {
+        let prng = new PRNG(seed);
+        
+        let Adir = Array(n).fill(0).map(() => Array(n).fill(0));
+        for (let i = 0; i < n; i++) {
+            for (let j = 0; j < n; j++) {
+                Adir[i][j] = (prng.uniform(0, 2.0) * k >= 1.0) ? 1 : 0;
+            }
+        }
+
+        let Aundir = Array(n).fill(0).map(() => Array(n).fill(0));
+        for (let i = 0; i < n; i++) {
+            for (let j = 0; j < n; j++) {
+                Aundir[i][j] = (Adir[i][j] || Adir[j][i]) ? 1 : 0;
+            }
+        }
+
+        prng = new PRNG(seed); // Скидаємо seed для матриці B
+        let B = Array(n).fill(0).map(() => Array(n).fill(0));
+        for (let i = 0; i < n; i++) B[i] = Array(n).fill(0).map(() => prng.uniform(0, 2.0));
+
+        let C = Array(n).fill(0).map(() => Array(n).fill(0));
+        let D = Array(n).fill(0).map(() => Array(n).fill(0));
+        let H = Array(n).fill(0).map(() => Array(n).fill(0));
+        let Tr = Array(n).fill(0).map(() => Array(n).fill(0));
+        let Wt = Array(n).fill(0).map(() => Array(n).fill(0));
+        let W = Array(n).fill(0).map(() => Array(n).fill(0));
+
+        for (let i = 0; i < n; i++) {
+            for (let j = 0; j < n; j++) {
+                C[i][j] = Math.ceil(B[i][j] * 100 * Aundir[i][j]);
+                D[i][j] = C[i][j] > 0 ? 1 : 0;
+                Tr[i][j] = i < j ? 1 : 0;
+            }
+        }
+
+        for (let i = 0; i < n; i++) {
+            for (let j = 0; j < n; j++) {
+                H[i][j] = D[i][j] !== D[j][i] ? 1 : 0;
+            }
+        }
+
+        for (let i = 0; i < n; i++) {
+            for (let j = 0; j < n; j++) {
+                Wt[i][j] = (D[i][j] + H[i][j] * Tr[i][j]) * C[i][j];
+            }
+        }
+
+        for (let i = 0; i < n; i++) {
+            for (let j = 0; j < n; j++) {
+                W[i][j] = Wt[i][j] > 0 ? Wt[i][j] : Wt[j][i];
+            }
+        }
+
+        return { Aundir, W };
+    }
+
+    // ── Координати (Трикутник) ──
+    function triCoords(n, w, h, p) {
+        let v = [[w/2, p], [w-p, h-p], [p, h-p]];
+        let pts = [];
+        for (let i = 0; i < n; i++) {
+            let t = i / n;
+            let a, b, f;
+            if (t < 1/3) { a = v[0]; b = v[1]; f = t * 3; }
+            else if (t < 2/3) { a = v[1]; b = v[2]; f = (t - 1/3) * 3; }
+            else { a = v[2]; b = v[0]; f = (t - 2/3) * 3; }
+            pts.push([a[0] + (b[0]-a[0])*f, a[1] + (b[1]-a[1])*f]);
+        }
+        return pts;
+    }
+
+    // ── Алгоритм Пріма (Генератор) ──
+    function* primGen(W, n) {
+        let start_node = 0;
+        for (let i = 0; i < n; i++) {
+            if (W[i].some(w => w > 0)) { start_node = i; break; }
+        }
+
+        let vis = new Set([start_node]);
+        let mst = [];
+        let heap = new MinHeap();
+        
+        for (let u = 0; u < n; u++) {
+            if (W[start_node][u] > 0) heap.push([W[start_node][u], start_node, u]);
+        }
+
+        yield { vis: new Set(vis), mst: [...mst], edge: null };
+
+        while (heap.length > 0 && mst.length < n - 1) {
+            let [w, u, v] = heap.pop();
+            if (vis.has(v)) continue;
+            
+            vis.add(v);
+            mst.push([u, v, w]);
+            
+            for (let x = 0; x < n; x++) {
+                if (W[v][x] > 0 && !vis.has(x)) {
+                    heap.push([W[v][x], v, x]);
+                }
+            }
+            yield { vis: new Set(vis), mst: [...mst], edge: [u, v, w] };
+        }
+    }
+
+    // ── Відмальовка на Canvas ──
+    function redraw(ctx, Aundir, W, coords, vis, mst_set) {
+        ctx.clearRect(0, 0, CW, CH);
+        let n = coords.length;
+
+        // Малюємо ребра
+        for (let i = 0; i < n; i++) {
+            for (let j = i + 1; j < n; j++) {
+                if (Aundir[i][j] === 0) continue;
+                
+                let [x1, y1] = coords[i];
+                let [x2, y2] = coords[j];
+                
+                let in_mst = false;
+                for (let edge of mst_set) {
+                    if ((edge[0] === i && edge[1] === j) || (edge[0] === j && edge[1] === i)) {
+                        in_mst = true; break;
+                    }
+                }
+
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.strokeStyle = in_mst ? '#D32F2F' : '#E0E0E0';
+                ctx.lineWidth = in_mst ? 4 : 1;
+                ctx.stroke();
+
+                // Малюємо ваги
+                let mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+                let dx = x2 - x1, dy = y2 - y1;
+                let d = Math.hypot(dx, dy);
+                let ox = d > 0 ? (-dy/d * 12) : 0;
+                let oy = d > 0 ? (dx/d * 12) : -12;
+                
+                ctx.fillStyle = "white";
+                ctx.fillRect(mx + ox - 12, my + oy - 8, 24, 16);
+                
+                ctx.fillStyle = '#1565C0';
+                ctx.font = 'bold 11px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(W[i][j], mx + ox, my + oy);
+            }
+        }
+
+        // Малюємо вершини
+        for (let i = 0; i < n; i++) {
+            let [x, y] = coords[i];
+            ctx.beginPath();
+            ctx.arc(x, y, NR, 0, 2 * Math.PI);
+            ctx.fillStyle = vis.has(i) ? '#81C784' : 'white';
+            ctx.fill();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#333333';
+            ctx.stroke();
+
+            ctx.fillStyle = 'black';
+            ctx.font = 'bold 14px Arial';
+            ctx.fillText(i + 1, x, y);
+        }
+    }
+
+    // ── Головна логіка ──
+    const canvas = document.getElementById('graphCanvas');
+    const ctx = canvas.getContext('2d');
+    const infoLbl = document.getElementById('info');
+    const stepBtn = document.getElementById('stepBtn');
+
+    const { Aundir, W } = buildMatrices(SEED, N, K);
+    const coords = triCoords(N, CW, CH, PAD);
+    
+    // Вивід у консоль розробника браузера (аналог print в Python)
+    console.log(`=== ЛАБОРАТОРНА РОБОТА №6 (Вар ${SEED}, k=${K}) ===`);
+    console.table(W); // Зручний вивід матриці в JS
+
+    let generator = primGen(W, N);
+    redraw(ctx, Aundir, W, coords, new Set(), []);
+
+    stepBtn.addEventListener('click', () => {
+        let result = generator.next();
+        if (!result.done) {
+            let { vis, mst, edge } = result.value;
+            let mst_set = mst.map(e => [Math.min(e[0], e[1]), Math.max(e[0], e[1])]);
+            redraw(ctx, Aundir, W, coords, vis, mst_set);
+
+            let cur_weight = mst.reduce((sum, e) => sum + e[2], 0);
+
+            if (edge === null) {
+                infoLbl.innerText = "Початкова вершина додана. Очікування вибору першого ребра...";
+            } else if (mst.length === N - 1) {
+                infoLbl.innerText = `✅ MST побудовано! Загальна сума ваг: ${cur_weight}`;
+                stepBtn.disabled = true;
+                console.log(">>> СУМА ВАГ МІНІМАЛЬНОГО КІСТЯКА: " + cur_weight + " <<<");
+            } else {
+                infoLbl.innerText = `Додано ребро (${edge[0]+1} - ${edge[1]+1}) з вагою ${edge[2]}  |  Поточна сума: ${cur_weight}`;
+            }
+        }
+    });
+
+</script>
+</body>
+</html>
