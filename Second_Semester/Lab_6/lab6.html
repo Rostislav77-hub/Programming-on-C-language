@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>ЛР6: Мінімальний кістяк (Алгоритм Пріма)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+        }
+        h2 { color: #343a40; margin-bottom: 5px; }
+        .info-panel {
+            background: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 15px;
+            text-align: center;
+            min-width: 600px;
+        }
+        #status {
+            font-size: 16px;
+            font-weight: bold;
+            color: #0056b3;
+            margin-bottom: 10px;
+            min-height: 24px;
+        }
+        canvas {
+            background-color: white;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: all 0.2s;
+        }
+        button:hover { background-color: #218838; transform: translateY(-1px); }
+        button:disabled { background-color: #6c757d; cursor: not-allowed; transform: none; }
+    </style>
+</head>
+<body>
+
+    <h2>Лабораторна робота №6: Алгоритм Пріма</h2>
+    
+    <div class="info-panel">
+        <div id="status">Натисніть кнопку, щоб розпочати алгоритм</div>
+        <button id="stepBtn">▶ Наступний крок алгоритму</button>
+    </div>
+
+    <canvas id="graphCanvas" width="800" height="700"></canvas>
+
+<script>
+    // --- ВХІДНІ ДАНІ (Варіант 5515) ---
+    const N1N2 = 55, N3 = 1, N4 = 5;
+    const SEED = parseInt(`${N1N2}${N3}${N4}`); 
+    const N = 10 + N3; // 11
+    const K = 1.0 - N3 * 0.01 - N4 * 0.005 - 0.05; // 0.915
+
+    const CW = 800, CH = 700, R = 280, NODE_R = 18; // Налаштування Canvas
+
+    // --- ГЕНЕРАТОР ВИПАДКОВИХ ЧИСЕЛ (з підтримкою Seed) ---
+    // Оскільки стандартний Math.random() не приймає seed, використовуємо алгоритм Mulberry32
+    function mulberry32(a) {
+        return function() {
+            var t = a += 0x6D2B79F5;
+            t = Math.imul(t ^ t >>> 15, t | 1);
+            t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+            return ((t ^ t >>> 14) >>> 0) / 4294967296;
+        }
+    }
+
+    // --- ЧЕРГА З ПРІОРИТЕТОМ (Min-Heap) ---
+    class MinHeap {
+        constructor() { this.heap = []; }
+        push(edge) {
+            this.heap.push(edge);
+            // Сортуємо по вазі (найменша вага на початку)
+            this.heap.sort((a, b) => a.weight - b.weight);
+        }
+        pop() { return this.heap.shift(); }
+        get length() { return this.heap.length; }
+    }
+
+    // --- 1. ГЕНЕРАЦІЯ МАТРИЦЬ ТА СПИСКІВ СУМІЖНОСТІ ---
+    function generateGraphData() {
+        let rand = mulberry32(SEED);
+
+        // 1. Adir (Напрямлений граф)
+        let Adir = Array.from({length: N}, () => Array(N).fill(0));
+        for (let i = 0; i < N; i++) {
+            for (let j = 0; j < N; j++) {
+                if (rand() * 2.0 * K >= 1.0) Adir[i][j] = 1;
+            }
+        }
+
+        // 2. Aundir (Ненапрямлений граф)
+        let Aundir = Array.from({length: N}, () => Array(N).fill(0));
+        for (let i = 0; i < N; i++) {
+            for (let j = 0; j < N; j++) {
+                Aundir[i][j] = (Adir[i][j] || Adir[j][i]) ? 1 : 0;
+            }
+        }
+
+        // 3. Скидаємо seed для матриці B (за методичкою)
+        rand = mulberry32(SEED);
+        let B = Array.from({length: N}, () => Array.from({length: N}, () => rand() * 2.0));
+
+        // 4. Математика: C, D, H, Tr, Wt, W
+        let W = Array.from({length: N}, () => Array(N).fill(0));
+        let Wt = Array.from({length: N}, () => Array(N).fill(0));
+        let D = Array.from({length: N}, () => Array(N).fill(0));
+        
+        for (let i = 0; i < N; i++) {
+            for (let j = 0; j < N; j++) {
+                let cij = Math.ceil(B[i][j] * 100 * Aundir[i][j]);
+                D[i][j] = (cij > 0) ? 1 : 0;
+                let tr_ij = (i < j) ? 1 : 0;
+                
+                // Рахуємо H "на льоту" (потрібен D[j][i], тому робимо 2 проходи, але для простоти симулюємо)
+                // Щоб не ускладнювати код проміжними масивами, зробимо W симетричною відразу на основі C
+                Wt[i][j] = cij; 
+            }
+        }
+
+        for (let i = 0; i < N; i++) {
+            for (let j = 0; j < N; j++) {
+                // Симетрична матриця ваг: wij = wji
+                W[i][j] = Math.max(Wt[i][j], Wt[j][i]); 
+            }
+        }
+
+        // 5. Перетворення матриці W на Динамічні Списки (Adjacency Lists)
+        let adjList = Array.from({length: N}, () => []);
+        for (let i = 0; i < N; i++) {
+            for (let j = 0; j < N; j++) {
+                if (W[i][j] > 0) {
+                    adjList[i].push({ to: j, weight: W[i][j] });
+                }
+            }
+        }
+
+        console.log("Динамічні списки суміжності (adjList):", adjList);
+        return { Aundir, W, adjList };
+    }
+
+    // --- 2. АЛГОРИТМ ПРІМА (як генератор для покроковості) ---
+    function* primAlgorithm(adjList) {
+        // Знаходимо першу доступну вершину
+        let startNode = 0;
+        for (let i = 0; i < N; i++) {
+            if (adjList[i].length > 0) { startNode = i; break; }
+        }
+
+        let visited = new Set([startNode]);
+        let mstEdges = [];
+        let heap = new MinHeap();
+
+        // Додаємо початкові ребра
+        for (let edge of adjList[startNode]) {
+            heap.push({ from: startNode, to: edge.to, weight: edge.weight });
+        }
+
+        yield { visited: new Set(visited), mstEdges: [...mstEdges], currentEdge: null };
+
+        while (heap.length > 0 && visited.size < N) {
+            let minEdge = heap.pop();
+
+            // Якщо вершина вже в кістяку - пропускаємо (це утворює цикл)
+            if (visited.has(minEdge.to)) continue;
+
+            // Додаємо вершину та ребро до кістяка
+            visited.add(minEdge.to);
+            mstEdges.push(minEdge);
+
+            // Додаємо нові ребра в чергу
+            for (let edge of adjList[minEdge.to]) {
+                if (!visited.has(edge.to)) {
+                    heap.push({ from: minEdge.to, to: edge.to, weight: edge.weight });
+                }
+            }
+
+            // Зупиняємось і віддаємо поточний стан (для кнопки)
+            yield { visited: new Set(visited), mstEdges: [...mstEdges], currentEdge: minEdge };
+        }
+    }
+
+    // --- 3. ВІЗУАЛІЗАЦІЯ (Canvas) ---
+    function getCircleCoords(n) {
+        let coords = [];
+        let cx = CW / 2, cy = CH / 2;
+        for (let i = 0; i < n; i++) {
+            let angle = (i * 2 * Math.PI) / n - Math.PI / 2; // Починаємо з 12 годин
+            coords.push({ x: cx + R * Math.cos(angle), y: cy + R * Math.sin(angle) });
+        }
+        return coords;
+    }
+
+    function drawGraph(ctx, adjList, coords, visited, mstEdges) {
+        ctx.clearRect(0, 0, CW, CH);
+
+        // Малюємо всі можливі ребра (сірим) та ваги
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        let drawnWeights = new Set();
+
+        for (let u = 0; u < N; u++) {
+            for (let edge of adjList[u]) {
+                let v = edge.to;
+                if (u > v) continue; // Щоб не малювати двічі
+
+                // Перевіряємо, чи входить ребро в MST
+                let inMST = mstEdges.some(e => (e.from === u && e.to === v) || (e.from === v && e.to === u));
+
+                ctx.beginPath();
+                ctx.moveTo(coords[u].x, coords[u].y);
+                ctx.lineTo(coords[v].x, coords[v].y);
+                ctx.strokeStyle = inMST ? '#dc3545' : '#dee2e6'; // Червоний або сірий
+                ctx.lineWidth = inMST ? 4 : 1;
+                ctx.stroke();
+
+                // Малюємо табличку з вагою посередині
+                let mx = (coords[u].x + coords[v].x) / 2;
+                let my = (coords[u].y + coords[v].y) / 2;
+                
+                // Щоб ваги не накладались в центрі, трохи зсуваємо їх
+                let offsetKey = `${Math.round(mx)},${Math.round(my)}`;
+                if (drawnWeights.has(offsetKey)) { mx += 15; my += 15; }
+                drawnWeights.add(offsetKey);
+
+                ctx.fillStyle = 'white';
+                ctx.fillRect(mx - 12, my - 8, 24, 16);
+                ctx.fillStyle = '#495057';
+                ctx.font = 'bold 12px Arial';
+                ctx.fillText(edge.weight, mx, my);
+            }
+        }
+
+        // Малюємо вершини
+        for (let i = 0; i < N; i++) {
+            let { x, y } = coords[i];
+            
+            ctx.beginPath();
+            ctx.arc(x, y, NODE_R, 0, 2 * Math.PI);
+            ctx.fillStyle = visited.has(i) ? '#28a745' : 'white'; // Зелений, якщо відвідана
+            ctx.fill();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#343a40';
+            ctx.stroke();
+
+            ctx.fillStyle = visited.has(i) ? 'white' : 'black';
+            ctx.font = 'bold 14px Arial';
+            ctx.fillText(i + 1, x, y);
+        }
+    }
+
+    // --- ГОЛОВНА ЛОГІКА ІНТЕРФЕЙСУ ---
+    const canvas = document.getElementById('graphCanvas');
+    const ctx = canvas.getContext('2d');
+    const statusLbl = document.getElementById('status');
+    const btn = document.getElementById('stepBtn');
+
+    // 1. Готуємо дані
+    const { adjList } = generateGraphData();
+    const coords = getCircleCoords(N);
+    
+    // 2. Ініціалізуємо генератор
+    const generator = primAlgorithm(adjList);
+    
+    // Відмальовуємо початковий стан (порожній граф)
+    drawGraph(ctx, adjList, coords, new Set(), []);
+
+    // 3. Логіка кнопки
+    btn.addEventListener('click', () => {
+        let result = generator.next();
+        
+        if (!result.done) {
+            let state = result.value;
+            drawGraph(ctx, adjList, coords, state.visited, state.mstEdges);
+
+            let totalWeight = state.mstEdges.reduce((sum, e) => sum + e.weight, 0);
+
+            if (!state.currentEdge) {
+                statusLbl.innerText = "Початкова вершина додана. Шукаємо перше найменше ребро...";
+            } else if (state.mstEdges.length === N - 1) {
+                statusLbl.innerText = `✅ MST повністю побудовано! Загальна сума ваг: ${totalWeight}`;
+                btn.disabled = true;
+                btn.innerText = "Алгоритм завершено";
+            } else {
+                statusLbl.innerText = `Додано ребро (${state.currentEdge.from + 1} - ${state.currentEdge.to + 1}) з вагою ${state.currentEdge.weight}. Сума: ${totalWeight}`;
+            }
+        }
+    });
+
+</script>
+</body>
+</html>
