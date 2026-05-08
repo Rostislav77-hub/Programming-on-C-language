@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <title>ЛР6 - Пріма</title>
+</head>
+<body style="text-align: center; font-family: Arial, sans-serif; background: #f4f4f4;">
+
+    <h2>Лабораторна робота 6: Алгоритм Пріма</h2>
+    <h3 id="info" style="color: #d32f2f;">Натисніть кнопку для старту</h3>
+    <button id="btn" style="padding: 10px 20px; font-size: 16px; cursor: pointer;">Наступний крок</button>
+    <br><br>
+    
+    <canvas id="canvas" width="600" height="600" style="background: white; border: 1px solid #ccc;"></canvas>
+
+<script>
+    const N = 11, K = 0.915;
+
+    // Простий генератор псевдовипадкових чисел (щоб граф завжди був однаковий)
+    function RND(seed) {
+        return function() { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }
+    }
+    let rand = RND(5515);
+
+    // 1. Генерація матриці ваг W (спрощено)
+    let W = Array.from({length: N}, () => Array(N).fill(0));
+    
+    for (let i = 0; i < N; i++) {
+        for (let j = 0; j < N; j++) {
+            // Імітуємо логіку наявності ребра та його ваги
+            let hasEdge = rand() * 2 * K >= 1.0;
+            let weight = Math.ceil(rand() * 100); 
+            if (hasEdge) {
+                W[i][j] = weight;
+                W[j][i] = weight; // Робимо симетричною відразу
+            }
+        }
+    }
+    for(let i = 0; i < N; i++) W[i][i] = 0; // Прибираємо петлі
+
+    // 2. Координати вершин (по колу)
+    let coords = [];
+    for (let i = 0; i < N; i++) {
+        let angle = (i * 2 * Math.PI) / N - Math.PI / 2;
+        coords.push({ x: 300 + 250 * Math.cos(angle), y: 300 + 250 * Math.sin(angle) });
+    }
+
+    // 3. Алгоритм Пріма (Генератор)
+    function* primAlgorithm() {
+        let visited = new Set([0]); // Починаємо з 0-ї вершини
+        let mst = [];
+
+        yield { visited, mst }; // Перший кадр (тільки 1 зелена вершина)
+
+        while (visited.size < N) {
+            let possibleEdges = [];
+
+            // Шукаємо всі ребра від відвіданих до невідвіданих вершин
+            for (let u of visited) {
+                for (let v = 0; v < N; v++) {
+                    if (W[u][v] > 0 && !visited.has(v)) {
+                        possibleEdges.push({ u, v, w: W[u][v] });
+                    }
+                }
+            }
+
+            if (possibleEdges.length === 0) break; // Якщо більше немає шляхів
+
+            // Сортуємо ребра за вагою і беремо найменше (аналог Min-Heap)
+            possibleEdges.sort((a, b) => a.w - b.w);
+            let minEdge = possibleEdges[0];
+
+            visited.add(minEdge.v);
+            mst.push(minEdge);
+
+            yield { visited, mst }; // Наступний кадр
+        }
+    }
+
+    // 4. Функція малювання
+    let ctx = document.getElementById('canvas').getContext('2d');
+    
+    function drawGraph(state) {
+        ctx.clearRect(0, 0, 600, 600);
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+
+        // Відмальовка всіх ребер (сірі)
+        for (let i = 0; i < N; i++) {
+            for (let j = i + 1; j < N; j++) {
+                if (W[i][j] > 0) {
+                    ctx.beginPath(); ctx.moveTo(coords[i].x, coords[i].y); ctx.lineTo(coords[j].x, coords[j].y);
+                    ctx.strokeStyle = '#e0e0e0'; ctx.lineWidth = 1; ctx.stroke();
+                    ctx.fillStyle = '#666'; ctx.font = '10px Arial';
+                    ctx.fillText(W[i][j], (coords[i].x + coords[j].x) / 2, (coords[i].y + coords[j].y) / 2);
+                }
+            }
+        }
+
+        // Відмальовка ребер кістяка (червоні товсті)
+        state.mst.forEach(edge => {
+            ctx.beginPath(); ctx.moveTo(coords[edge.u].x, coords[edge.u].y); ctx.lineTo(coords[edge.v].x, coords[edge.v].y);
+            ctx.strokeStyle = 'red'; ctx.lineWidth = 3; ctx.stroke();
+        });
+
+        // Відмальовка вершин
+        for (let i = 0; i < N; i++) {
+            ctx.beginPath(); ctx.arc(coords[i].x, coords[i].y, 15, 0, 2 * Math.PI);
+            ctx.fillStyle = state.visited.has(i) ? 'green' : 'white'; ctx.fill();
+            ctx.strokeStyle = 'black'; ctx.lineWidth = 2; ctx.stroke();
+            ctx.fillStyle = state.visited.has(i) ? 'white' : 'black'; ctx.font = 'bold 12px Arial';
+            ctx.fillText(i + 1, coords[i].x, coords[i].y);
+        }
+    }
+
+    // 5. Запуск
+    let gen = primAlgorithm();
+    drawGraph({ visited: new Set(), mst: [] }); // Порожній стан
+
+    document.getElementById('btn').onclick = function() {
+        let result = gen.next();
+        if (!result.done) {
+            drawGraph(result.value);
+            let sum = result.value.mst.reduce((s, e) => s + e.w, 0);
+            document.getElementById('info').innerText = `Поточна сума ваг кістяка: ${sum}`;
+        } else {
+            document.getElementById('info').innerText += `  (✅ ЗАВЕРШЕНО)`;
+            this.disabled = true;
+        }
+    };
+</script>
+</body>
+</html>
